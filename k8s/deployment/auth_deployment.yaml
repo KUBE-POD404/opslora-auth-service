@@ -28,7 +28,7 @@ spec:
               podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app: auth-app
+                    app: auth-microservice 
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: auth-container
