@@ -3,34 +3,49 @@ description: Send email and Slack notification
 
 inputs:
   pipeline_name:
+    description: Name of the pipeline
     required: true
   repository_name:
+    description: Name of the repository
     required: true
   failure_reason:
+    description: Reason for the failure
     required: true
   author:
+    description: Author of the pull request
     required: true
   smtp_username:
+    description: SMTP server username
     required: true
   smtp_password:
+    description: SMTP server password
     required: true
   mail_from:
+    description: Email address to send from
     required: true
   mail_to:
+    description: Email address to send to
     required: true
   slack_webhook:
+    description: Slack incoming webhook URL
     required: true
   tool:
+    description: Scanning tool name
     required: true
   workflow_url:
+    description: URL of the workflow run
     required: true
   sonar_host_url:
+    description: SonarQube host URL
     required: false
   sonar_project_key:
+    description: SonarQube project key
     required: false
   snyk_org:
+    description: Snyk organization identifier
     required: false
   snyk_project_name:
+    description: Snyk project name
     required: false
 
 runs:
