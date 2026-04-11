@@ -44,6 +44,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
       - name: Sonar Notification
         if: ${{ needs.sonar-scan.outputs.quality_gate_status == 'FAILED' }}
         uses: ./.github/actions/notification-action
@@ -77,5 +80,5 @@ jobs:
           slack_webhook: ${{ secrets.SLACK_INCOMING_WEBHOOK }}
           tool: snyk
           workflow_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          snyk_org: your-snyk-org
+          snyk_org: ${{ secrets.SNYK_ORG }}
           snyk_project_name: ${{ github.event.repository.name }}
