@@ -1,0 +1,128 @@
+name: Email and Slack Notification
+description: Send email and Slack notification
+
+inputs:
+  pipeline_name:
+    required: true
+  repository_name:
+    required: true
+  failure_reason:
+    required: true
+  author:
+    required: true
+  smtp_username:
+    required: true
+  smtp_password:
+    required: true
+  mail_from:
+    required: true
+  mail_to:
+    required: true
+  slack_webhook:
+    required: true
+  tool:
+    required: true
+  workflow_url:
+    required: true
+  sonar_host_url:
+    required: false
+  sonar_project_key:
+    required: false
+  snyk_org:
+    required: false
+  snyk_project_name:
+    required: false
+
+runs:
+  using: composite
+  steps:
+
+    # 🔥 Generate dynamic report URL
+    - name: Build Report URL
+      id: build_url
+      shell: bash
+      run: |
+        if [ "${{ inputs.tool }}" = "sonar" ]; then
+          echo "url=${{ inputs.sonar_host_url }}/dashboard?id=${{ inputs.sonar_project_key }}" >> $GITHUB_OUTPUT
+        elif [ "${{ inputs.tool }}" = "snyk" ]; then
+          echo "url=https://app.snyk.io/org/${{ inputs.snyk_org }}/projects" >> $GITHUB_OUTPUT
+        else
+          echo "url=${{ inputs.workflow_url }}" >> $GITHUB_OUTPUT
+        fi
+
+    # 🔥 EMAIL
+    - name: Send email
+      uses: hilarion5/send-mail@v1
+      with:
+        smtp-server: smtp.hostinger.com
+        smtp-port: 587
+        smtp-secure: false
+        username: ${{ inputs.smtp_username }}
+        password: ${{ inputs.smtp_password }}
+        from-email: "Opslora CI Alerts <${{ inputs.mail_from }}>"
+        to-email: ${{ inputs.mail_to }}
+        subject: "[CI ALERT] ${{ inputs.pipeline_name }} FAILED - ${{ inputs.repository_name }}"
+        html: |
+          <div style="padding:24px;background:#f4f7fb;font-family:Arial;">
+            <h2 style="color:#b91c1c;">🚨 Pipeline Failure</h2>
+
+            <p><b>Pipeline:</b> ${{ inputs.pipeline_name }}</p>
+            <p><b>Repository:</b> ${{ inputs.repository_name }}</p>
+            <p><b>Author:</b> ${{ inputs.author }}</p>
+            <p><b>Reason:</b> ${{ inputs.failure_reason }}</p>
+
+            <br/>
+
+            <a href="${{ steps.build_url.outputs.url }}"
+               style="padding:12px 18px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;">
+               View Report
+            </a>
+
+            <br/><br/>
+
+            <a href="${{ inputs.workflow_url }}"
+               style="padding:10px 14px;background:#111;color:#fff;text-decoration:none;border-radius:6px;">
+               View Workflow
+            </a>
+          </div>
+
+    # 🔥 SLACK
+    - name: Post to Slack
+      uses: slackapi/slack-github-action@v3.0.1
+      with:
+        webhook: ${{ inputs.slack_webhook }}
+        webhook-type: incoming-webhook
+        payload: |
+          text: "🚨 ${{ inputs.pipeline_name }} failed"
+          attachments:
+            - color: "#dc2626"
+              blocks:
+
+                - type: header
+                  text:
+                    type: plain_text
+                    text: "🚨 Pipeline Failure Alert"
+
+                - type: section
+                  fields:
+                    - type: mrkdwn
+                      text: "*Repo:*\n${{ inputs.repository_name }}"
+                    - type: mrkdwn
+                      text: "*Author:*\n${{ inputs.author }}"
+                    - type: mrkdwn
+                      text: "*Reason:*\n${{ inputs.failure_reason }}"
+
+                - type: actions
+                  elements:
+                    - type: button
+                      text:
+                        type: plain_text
+                        text: "View Report"
+                      url: "${{ steps.build_url.outputs.url }}"
+                      style: danger
+
+                    - type: button
+                      text:
+                        type: plain_text
+                        text: "Workflow Run"
+                      url: "${{ inputs.workflow_url }}"
