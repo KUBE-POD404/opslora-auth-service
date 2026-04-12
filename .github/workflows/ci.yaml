@@ -82,3 +82,4 @@ jobs:
           workflow_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           snyk_org: ${{ secrets.SNYK_ORG }}
           snyk_project_name: ${{ github.event.repository.name }}
+          snyk_project_id: ${{ secrets.SNYK_PROJECT_ID }}
