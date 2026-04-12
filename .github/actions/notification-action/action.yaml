@@ -47,6 +47,9 @@ inputs:
   snyk_project_name:
     description: Snyk project name
     required: false
+  snyk_project_id:
+    description: Snyk project ID
+    required: false
 
 runs:
   using: composite
@@ -59,7 +62,7 @@ runs:
         if [ "${{ inputs.tool }}" = "sonar" ]; then
           echo "url=${{ inputs.sonar_host_url }}/dashboard?id=${{ inputs.sonar_project_key }}" >> $GITHUB_OUTPUT
         elif [ "${{ inputs.tool }}" = "snyk" ]; then
-          echo "url=https://app.snyk.io/org/${{ inputs.snyk_org }}/projects" >> $GITHUB_OUTPUT
+          echo "url=https://app.snyk.io/org/${{ inputs.snyk_org }}/projects/${{ inputs.snyk_project_id }}" >> $GITHUB_OUTPUT
         else
           echo "url=${{ inputs.workflow_url }}" >> $GITHUB_OUTPUT
         fi
@@ -77,7 +80,7 @@ runs:
         subject: "[CI ALERT] ${{ inputs.pipeline_name }} FAILED - ${{ inputs.repository_name }}"
         html: |
           <div style="padding:24px;background:#f4f7fb;font-family:Arial;">
-            <h2 style="color:#b91c1c;">🚨 Pipeline Failure</h2>
+            <h2 style="color:#b91c1c;">Pipeline Failure</h2>
 
             <p><b>Pipeline:</b> ${{ inputs.pipeline_name }}</p>
             <p><b>Repository:</b> ${{ inputs.repository_name }}</p>
@@ -105,24 +108,32 @@ runs:
         webhook: ${{ inputs.slack_webhook }}
         webhook-type: incoming-webhook
         payload: |
-          text: "🚨 ${{ inputs.pipeline_name }} failed"
           attachments:
-            - color: "#dc2626"
+            - color: "#dc2626"  # red failure color
               blocks:
 
                 - type: header
                   text:
                     type: plain_text
-                    text: "🚨 Pipeline Failure Alert"
+                    text: "CI Pipeline Failure"
+
+                - type: context
+                  elements:
+                    - type: mrkdwn
+                      text: "*Pipeline:* ${{ inputs.pipeline_name }}"
+                    - type: mrkdwn
+                      text: "*Repository:* ${{ inputs.repository_name }}"
+
+                - type: divider
 
                 - type: section
                   fields:
                     - type: mrkdwn
-                      text: "*Repo:*\n${{ inputs.repository_name }}"
+                      text: "*Author*\n${{ inputs.author }}"
                     - type: mrkdwn
-                      text: "*Author:*\n${{ inputs.author }}"
-                    - type: mrkdwn
-                      text: "*Reason:*\n${{ inputs.failure_reason }}"
+                      text: "*Failure Reason*\n${{ inputs.failure_reason }}"
+
+                - type: divider
 
                 - type: actions
                   elements:
@@ -136,5 +147,5 @@ runs:
                     - type: button
                       text:
                         type: plain_text
-                        text: "Workflow Run"
+                        text: "View Workflow"
                       url: "${{ inputs.workflow_url }}"
