@@ -11,7 +11,7 @@ from app.exceptions.handlers import (
     validation_exception_handler,
     generic_exception_handler,
 )
-from app.exceptions.custom_exceptions import AppException
+from app.exceptions.custom_exception import AppException
 
 setup_logging()
 
@@ -20,9 +20,9 @@ if os.getenv("ENVIRONMENT") == "production":
     redoc_url = None
     openapi_url = None
 else:
-    docs_url = "/api/v1/auth/docs"
-    redoc_url = "/api/v1/auth/redoc"
-    openapi_url = "/api/v1/auth/openapi.json"
+    docs_url = "/docs"
+    redoc_url = "/redoc"
+    openapi_url = "/openapi.json"
 
 app = FastAPI(
     title="Authentication Service",

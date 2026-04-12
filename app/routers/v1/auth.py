@@ -1,3 +1,4 @@
+from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -20,7 +21,7 @@ def health():
 
 
 @router.post("/signup", response_model=SignupResponse)
-def signup_user(payload: SignupRequest, db: Session = Depends(get_db)):
+def signup_user(payload: SignupRequest, db: Annotated[Session, Depends(get_db)]):
 
     result = signup(
         db=db,
@@ -34,7 +35,7 @@ def signup_user(payload: SignupRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
+def login_user(payload: LoginRequest, db: Annotated[Session, Depends(get_db)]):
 
     token = login(
         db=db,

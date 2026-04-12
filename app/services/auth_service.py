@@ -14,7 +14,7 @@ from app.core.celery_app import celery
 from app.security.password import hash_password, verify_password
 from app.security.jwt import create_access_token
 
-from app.exceptions.custom_exceptions import (
+from app.exceptions.custom_exception import (
     NotFoundException,
     UnauthorizedException,
     ConflictException,
