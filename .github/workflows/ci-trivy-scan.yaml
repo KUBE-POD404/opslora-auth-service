@@ -1,0 +1,21 @@
+name: Trivy Scan
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        required: true
+        type: string
+
+jobs:
+  trivy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Scan image
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: ${{ secrets.TEST_REPO }}:${{ inputs.image_tag }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH

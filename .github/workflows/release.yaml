@@ -1,0 +1,52 @@
+name: Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Login DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Get commit SHA
+        id: sha
+        run: |
+          SHA=$(git rev-list -n 1 $GITHUB_REF)
+          SHORT_SHA=${SHA::7}
+          echo "sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+      - name: Pull image from TEST repo
+        run: |
+          docker pull ${{ secrets.TEST_REPO }}:${{ steps.sha.outputs.sha }}
+
+      - name: Tag for PROD
+        run: |
+          docker tag \
+            ${{ secrets.TEST_REPO }}:${{ steps.sha.outputs.sha }} \
+            ${{ secrets.PROD_REPO }}:${{ steps.version.outputs.version }}
+
+      - name: Push to PROD repo
+        run: |
+          docker push ${{ secrets.PROD_REPO }}:${{ steps.version.outputs.version }}
+
+      - name: Tag latest
+        run: |
+          docker tag \
+            ${{ secrets.PROD_REPO }}:${{ steps.version.outputs.version }} \
+            ${{ secrets.PROD_REPO }}:latest
+
+          docker push ${{ secrets.PROD_REPO }}:latest
