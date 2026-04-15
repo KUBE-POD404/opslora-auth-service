@@ -40,7 +40,9 @@ jobs:
 
   notify:
     needs: [sonar-scan, snyk-scan, get-email]
-    if: ${{ always() && (needs.sonar-scan.outputs.quality_gate_status == 'FAILED' || needs.snyk-scan.outputs.snyk_status == 'failure') }}
+    if: ${{ always() && 
+      (needs.sonar-scan.outputs.quality_gate_status == 'FAILED' || 
+      (needs.snyk-scan.result == 'failure')) }}
     runs-on: ubuntu-latest
 
     steps:
