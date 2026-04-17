@@ -48,7 +48,11 @@ jobs:
           echo "image=ghcr.io/$OWNER/$REPO" >> $GITHUB_OUTPUT
 
       - name: Build image
-        run: docker build -t ${{ steps.image.outputs.image }}:${{ steps.meta.outputs.tag }} .
+        run: |
+          docker buildx build \
+            --load \
+            -t ${{ steps.image.outputs.image }}:${{ steps.meta.outputs.tag }} \
+            .
 
       - name: Install Trivy
         run: |
