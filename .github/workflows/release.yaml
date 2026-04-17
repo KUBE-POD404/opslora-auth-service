@@ -19,39 +19,58 @@ jobs:
           REGEX='^v[0-9]+\.[0-9]+\.[0-9]+(-((alpha|beta|rc)\.[0-9]+))?$'
 
           if [[ ! "$TAG" =~ $REGEX ]]; then
-            echo "Invalid tag format"
+            echo "Invalid tag format: $TAG"
             exit 1
           fi
 
           echo "version=$TAG" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/login-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - id: image
         run: |
-          IMAGE=ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
+
+          IMAGE=ghcr.io/$OWNER/$REPO
           echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+          echo "Using image: $IMAGE"
 
       - id: sha
         run: |
-          SHA=$(git rev-list -n 1 ${{ github.event.release.tag_name }})
+          TAG='${{ github.event.release.tag_name }}'
+
+          SHA=$(git rev-list -n 1 "$TAG")
           SHORT_SHA="${SHA::7}"
+
           echo "sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+
+          echo "Resolved tag $TAG → commit $SHA → short $SHORT_SHA"
 
       - name: Promote image
         run: |
-          docker pull ${{ steps.image.outputs.image }}:${{ steps.sha.outputs.sha }}
+          IMAGE=${{ steps.image.outputs.image }}
+          SHA=${{ steps.sha.outputs.sha }}
+          VERSION=${{ steps.version.outputs.version }}
 
-          docker tag \
-            ${{ steps.image.outputs.image }}:${{ steps.sha.outputs.sha }} \
-            ${{ steps.image.outputs.image }}:${{ steps.version.outputs.version }}
+          echo "Pulling image: $IMAGE:$SHA"
+          docker pull $IMAGE:$SHA
 
-          docker push ${{ steps.image.outputs.image }}:${{ steps.version.outputs.version }}
+          echo "Tagging image: $IMAGE:$VERSION"
+          docker tag $IMAGE:$SHA $IMAGE:$VERSION
+
+          echo "Pushing image with retry..."
+          for i in 1 2 3; do
+            docker push $IMAGE:$VERSION && break || sleep 5
+          done

@@ -80,7 +80,7 @@ jobs:
     uses: ./.github/workflows/ci-docker-build.yaml
     secrets: inherit
 
-    
+
   notify:
       name: Notification for image pipeline
       runs-on: ubuntu-latest
@@ -93,27 +93,17 @@ jobs:
         - name: Checkout code
           uses: actions/checkout@v4
 
-        - name: Debug notification values
-          run: |
-            echo "Author email: '${{ needs.get-email.outputs.email }}'"
-            echo "Author name: '${{ needs.get-email.outputs.name }}'"
-            echo "Docker build result: '${{ needs.docker-build.result }}'"
-            echo "Failure stage: '${{ needs.docker-build.outputs.failure_stage }}'"
-            echo "Report URL: '${{ needs.docker-build.outputs.report_url }}'"
-
         - name: Send image pipeline notification
           uses: ./.github/actions/notification-action
           with:
             pipeline_name: ${{ github.workflow }}
             repository_name: ${{ github.repository }}
-            failure_reason: ${{ needs.docker-build.outputs.failure_stage == 'trivy' && 'Trivy Scan Failed' || needs.docker-build.outputs.failure_stage == 'trivy-install' && 'Trivy Install Failed' || 'Docker Build Failed' }}
+            failure_reason: ${{ needs.docker-build.outputs.failure_stage }}
             author: ${{ needs.get-email.outputs.name || github.actor }}
             smtp_username: ${{ secrets.SMTP_USERNAME }}
             smtp_password: ${{ secrets.SMTP_PASSWORD }}
             mail_from: ${{ secrets.MAIL_FROM }}
             mail_to: ${{ needs.get-email.outputs.email || secrets.MAIL_TO }}
             slack_webhook: ${{ secrets.SLACK_INCOMING_WEBHOOK }}
-            sonar_host_url: ${{ secrets.SONAR_HOST_URL }}
-            sonar_project_key: ${{ secrets.SONAR_PROJECT_KEY }}
-            tool: docker
+            workflow_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
             report_url: ${{ needs.docker-build.outputs.report_url }}
