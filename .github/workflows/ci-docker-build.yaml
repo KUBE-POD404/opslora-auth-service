@@ -20,33 +20,38 @@ jobs:
       report_url: ${{ steps.report.outputs.url }}
 
     steps:
+      # ✅ Checkout
       - uses: actions/checkout@v4
 
+      # ✅ Tag
       - id: meta
         run: |
           TAG=${GITHUB_SHA::7}
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
+      # ✅ Report URL
       - id: report
         run: |
           echo "url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # ✅ Buildx
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Login to GHCR
-        uses: docker/login-action@v3
+      # ✅ GHCR Login
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # ✅ Normalize image name
       - id: image
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           REPO=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
           echo "image=ghcr.io/$OWNER/$REPO" >> $GITHUB_OUTPUT
 
+      # ✅ Build
       - name: Build image
         id: build
         run: |
@@ -55,21 +60,40 @@ jobs:
             -t ${{ steps.image.outputs.image }}:${{ steps.meta.outputs.tag }} \
             .
 
+      # ✅ Install Trivy
       - name: Install Trivy
         run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+          | sudo sh -s -- -b /usr/local/bin
+          trivy --version
 
+      # ✅ Scan (controlled failure)
       - name: Scan image
         id: scan
+        continue-on-error: true
         run: |
-          trivy image --severity HIGH,CRITICAL --exit-code 1 ${{ steps.image.outputs.image }}:${{ steps.meta.outputs.tag }}
+          trivy image \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            ${{ steps.image.outputs.image }}:${{ steps.meta.outputs.tag }}
 
+      # ❗ STOP if scan failed (BEFORE PUSH)
+      - name: Stop on vulnerability
+        if: ${{ steps.scan.outcome == 'failure' }}
+        run: |
+          echo "Trivy scan failed. Not pushing image."
+          exit 1
+
+      # ✅ Push only if safe
       - name: Push image
         id: push
-        run: docker push ${{ steps.image.outputs.image }}:${{ steps.meta.outputs.tag }}
+        run: |
+          for i in 1 2 3; do
+            docker push ${{ steps.image.outputs.image }}:${{ steps.meta.outputs.tag }} && break || sleep 5
+          done
 
       - id: failure
-        if: failure()
+        if: always()
         run: |
           if [ "${{ steps.build.outcome }}" = "failure" ]; then
             echo "stage=build_failed" >> $GITHUB_OUTPUT
@@ -78,5 +102,5 @@ jobs:
           elif [ "${{ steps.push.outcome }}" = "failure" ]; then
             echo "stage=push_failed" >> $GITHUB_OUTPUT
           else
-            echo "stage=unknown_failure" >> $GITHUB_OUTPUT
+            echo "stage=success" >> $GITHUB_OUTPUT
           fi
