@@ -48,19 +48,35 @@ jobs:
           echo "image=ghcr.io/$OWNER/$REPO" >> $GITHUB_OUTPUT
 
       - name: Build image
-        run: docker build -t ${{ steps.image.outputs.image }}:${{ steps.meta.outputs.tag }} .
+        id: build
+        run: |
+          docker buildx build \
+            --load \
+            -t ${{ steps.image.outputs.image }}:${{ steps.meta.outputs.tag }} \
+            .
 
       - name: Install Trivy
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh
 
       - name: Scan image
+        id: scan
         run: |
           trivy image --severity HIGH,CRITICAL --exit-code 1 ${{ steps.image.outputs.image }}:${{ steps.meta.outputs.tag }}
 
       - name: Push image
+        id: push
         run: docker push ${{ steps.image.outputs.image }}:${{ steps.meta.outputs.tag }}
 
       - id: failure
         if: failure()
-        run: echo "stage=failed" >> $GITHUB_OUTPUT
+        run: |
+          if [ "${{ steps.build.outcome }}" = "failure" ]; then
+            echo "stage=build_failed" >> $GITHUB_OUTPUT
+          elif [ "${{ steps.scan.outcome }}" = "failure" ]; then
+            echo "stage=trivy_scan_failed" >> $GITHUB_OUTPUT
+          elif [ "${{ steps.push.outcome }}" = "failure" ]; then
+            echo "stage=push_failed" >> $GITHUB_OUTPUT
+          else
+            echo "stage=unknown_failure" >> $GITHUB_OUTPUT
+          fi
