@@ -81,7 +81,7 @@ jobs:
     secrets: inherit
 
     update-helm-test-values:
-      name: Update customer test values in helm repo
+      name: Update auth test values in helm repo
       needs:
         - gate
         - docker-build
