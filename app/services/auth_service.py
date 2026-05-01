@@ -8,6 +8,7 @@ from app.models.role import Role
 from app.models.user_role import UserRole
 from app.models.permission import Permission
 from app.models.role_permission import RolePermission
+from app.models.organization_settings import OrganizationSettings
 
 from app.core.celery_app import celery
 
@@ -65,6 +66,14 @@ def signup(db: Session, org_name: str, org_slug: str, email: str, password: str)
     organization = Organization(name=org_name, slug=org_slug)
     db.add(organization)
     db.flush()
+
+    db.add(
+        OrganizationSettings(
+            organization_id=organization.id,
+            legal_name=org_name,
+            display_name=org_name,
+        )
+    )
 
     user = User(
         email=email,

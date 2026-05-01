@@ -11,3 +11,4 @@ email-validator
 requests
 celery
 kombu
+alembic

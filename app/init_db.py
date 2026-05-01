@@ -7,6 +7,7 @@ from app.models.organization_user import OrganizationUser
 from app.models.role_permission import RolePermission
 from app.models.user_role import UserRole
 from app.models.refresh_token import RefreshToken
+from app.models.organization_settings import OrganizationFeatureFlag, OrganizationSettings
 
 
 def create_tables():
@@ -49,6 +50,9 @@ def seed_roles_and_permissions():
             "payment.create",
             "payment.read",
             "payment.refund",
+
+            "organization.settings.read",
+            "organization.settings.update",
         ]
 
         for perm in permissions:
