@@ -1,6 +1,6 @@
 from app.core.logging_config import setup_logging
 from fastapi import FastAPI
-from app.routers.v1 import auth
+from app.routers.v1 import auth, settings
 from app.core.config import settings
 from fastapi.exceptions import RequestValidationError
 from app.core.middleware import RequestContextMiddleware
@@ -40,3 +40,4 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(settings.router, prefix="/api/v1")
