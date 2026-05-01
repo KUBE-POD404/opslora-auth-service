@@ -1,7 +1,7 @@
 from app.core.logging_config import setup_logging
-import os
 from fastapi import FastAPI
 from app.routers.v1 import auth
+from app.core.config import settings
 from fastapi.exceptions import RequestValidationError
 from app.core.middleware import RequestContextMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -15,7 +15,7 @@ from app.exceptions.custom_exception import AppException
 
 setup_logging()
 
-if os.getenv("ENVIRONMENT") == "production":
+if settings.is_production:
     docs_url = None
     redoc_url = None
     openapi_url = None

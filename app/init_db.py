@@ -36,6 +36,10 @@ def seed_roles_and_permissions():
             "order.confirm",
             "order.cancel",
 
+            "inventory.create",
+            "inventory.read",
+            "inventory.update",
+            "inventory.adjust",
 
             "invoice.create",
             "invoice.read",
@@ -51,6 +55,29 @@ def seed_roles_and_permissions():
             permission = db.query(Permission).filter(Permission.name == perm).first()
             if not permission:
                 db.add(Permission(name=perm))
+
+        db.commit()
+
+        owner_role = db.query(Role).filter(Role.name == "OWNER").first()
+        all_permissions = db.query(Permission).all()
+
+        if owner_role:
+            for permission in all_permissions:
+                existing_mapping = (
+                    db.query(RolePermission)
+                    .filter(
+                        RolePermission.role_id == owner_role.id,
+                        RolePermission.permission_id == permission.id,
+                    )
+                    .first()
+                )
+                if not existing_mapping:
+                    db.add(
+                        RolePermission(
+                            role_id=owner_role.id,
+                            permission_id=permission.id,
+                        )
+                    )
 
         db.commit()
 

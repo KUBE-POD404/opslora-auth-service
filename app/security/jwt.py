@@ -1,14 +1,12 @@
-import os
 from datetime import datetime, timedelta, timezone
 import jwt
 from jwt import PyJWTError
+from app.core.config import settings
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if not SECRET_KEY:
-    raise ValueError("JWT_SECRET_KEY is not set")
+SECRET_KEY = settings.jwt_secret_key
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 
 
 class InvalidTokenError(Exception):
