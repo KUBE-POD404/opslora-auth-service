@@ -10,11 +10,6 @@ from app.services.auth_service import signup, login
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.get("/health")
-def health():
-    return {"status": "ok"}
-
-
 @router.post("/signup", response_model=SignupResponse)
 def signup_user(payload: SignupRequest, db: Annotated[Session, Depends(get_db)]):
 
@@ -43,4 +38,3 @@ def login_user(payload: LoginRequest, db: Annotated[Session, Depends(get_db)]):
         "access_token": token,
         "token_type": "bearer"
     }
-

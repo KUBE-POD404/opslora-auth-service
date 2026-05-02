@@ -55,10 +55,6 @@ def test_auth_api_signup_login_and_duplicate_org(monkeypatch):
     try:
         client = TestClient(app)
 
-        health_response = client.get("/api/v1/auth/health")
-        assert health_response.status_code == 200
-        assert health_response.json() == {"status": "ok"}
-
         signup_response = client.post(
             "/api/v1/auth/signup",
             json={
