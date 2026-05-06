@@ -22,6 +22,7 @@ class Settings:
     jwt_secret_key: str = _required("JWT_SECRET_KEY")
     rabbitmq_url: str = _required("RABBITMQ_URL")
     access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
+    refresh_token_expire_days: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
 
     @property
     def is_production(self) -> bool:

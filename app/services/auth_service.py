@@ -1,4 +1,7 @@
 import logging
+import hashlib
+import secrets
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.models.organization import Organization
@@ -7,9 +10,11 @@ from app.models.organization_user import OrganizationUser
 from app.models.role import Role
 from app.models.user_role import UserRole
 from app.models.permission import Permission
+from app.models.refresh_token import RefreshToken
 from app.models.role_permission import RolePermission
 from app.models.organization_settings import OrganizationSettings
 
+from app.core.config import settings
 from app.core.celery_app import celery
 
 from app.security.password import hash_password, verify_password
@@ -23,6 +28,47 @@ from app.exceptions.custom_exception import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _hash_refresh_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _create_refresh_token(db: Session, user_id: int, organization_id: int) -> str:
+    raw_token = secrets.token_urlsafe(64)
+    refresh_token = RefreshToken(
+        user_id=user_id,
+        organization_id=organization_id,
+        token_hash=_hash_refresh_token(raw_token),
+        revoked=False,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days),
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(refresh_token)
+    return raw_token
+
+
+def _as_aware_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _token_response(db: Session, user: User, organization: Organization) -> dict:
+    permissions = get_user_permissions(db, user.id, organization.id)
+    access_token = create_access_token({
+        "user_id": user.id,
+        "email": user.email,
+        "org_id": organization.id,
+        "permissions": permissions
+    })
+    refresh_token = _create_refresh_token(db, user.id, organization.id)
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+    }
 
 
 def get_user_permissions(db, user_id, org_id):
@@ -104,14 +150,8 @@ def signup(db: Session, org_name: str, org_slug: str, email: str, password: str)
 
     logger.info(f"User created user_id={user.id}, org_id={organization.id}")
 
-    permissions = get_user_permissions(db, user.id, organization.id)
-
-    token = create_access_token({
-        "user_id": user.id,
-        "email": user.email,
-        "org_id": organization.id,
-        "permissions": permissions
-    })
+    tokens = _token_response(db, user, organization)
+    db.commit()
 
     logger.info(f"Token generated for user_id={user.id}")
 
@@ -136,7 +176,8 @@ def signup(db: Session, org_name: str, org_slug: str, email: str, password: str)
         logger.error(f"Notification failed for user_id={user.id}: {e}")
 
     return {
-        "access_token": token,
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens["refresh_token"],
         "user_id": user.id,
         "email": user.email,
         "organization_name": organization.name
@@ -176,15 +217,63 @@ def login(db: Session, org_slug: str, email: str, password: str):
     if not organization_user:
         raise ForbiddenException("User not part of this organization")
 
-    permissions = get_user_permissions(db, user.id, organization.id)
-
-    token = create_access_token({
-        "user_id": user.id,
-        "email": user.email,
-        "org_id": organization.id,
-        "permissions": permissions
-    })
+    tokens = _token_response(db, user, organization)
+    db.commit()
 
     logger.info(f"Login success user_id={user.id}")
 
-    return token
+    return tokens
+
+
+def refresh_access_token(db: Session, refresh_token: str):
+    token_hash = _hash_refresh_token(refresh_token)
+    stored_token = (
+        db.query(RefreshToken)
+        .filter(RefreshToken.token_hash == token_hash)
+        .first()
+    )
+
+    if not stored_token or stored_token.revoked:
+        raise UnauthorizedException("Invalid refresh token")
+
+    expires_at = _as_aware_utc(stored_token.expires_at)
+    if expires_at and expires_at < datetime.now(timezone.utc):
+        stored_token.revoked = True
+        stored_token.revoked_at = datetime.now(timezone.utc)
+        db.commit()
+        raise UnauthorizedException("Refresh token expired")
+
+    user = db.query(User).filter(User.id == stored_token.user_id).first()
+    organization = (
+        db.query(Organization)
+        .filter(Organization.id == stored_token.organization_id)
+        .first()
+    )
+
+    if not user or not organization:
+        raise UnauthorizedException("Invalid refresh token")
+
+    tokens = _token_response(db, user, organization)
+    stored_token.revoked = True
+    stored_token.revoked_at = datetime.now(timezone.utc)
+    stored_token.replaced_by_token_hash = _hash_refresh_token(tokens["refresh_token"])
+    db.commit()
+
+    logger.info(f"Refresh token rotated user_id={user.id}, org_id={organization.id}")
+    return tokens
+
+
+def logout(db: Session, refresh_token: str):
+    token_hash = _hash_refresh_token(refresh_token)
+    stored_token = (
+        db.query(RefreshToken)
+        .filter(RefreshToken.token_hash == token_hash)
+        .first()
+    )
+
+    if stored_token and not stored_token.revoked:
+        stored_token.revoked = True
+        stored_token.revoked_at = datetime.now(timezone.utc)
+        db.commit()
+
+    return {"status": "logged_out"}

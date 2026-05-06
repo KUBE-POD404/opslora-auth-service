@@ -69,6 +69,7 @@ def test_auth_api_signup_login_and_duplicate_org(monkeypatch):
         assert signup["email"] == "owner@example.com"
         assert signup["organization_name"] == "Acme Industries"
         assert signup["access_token"]
+        assert signup["refresh_token"]
         assert len(celery_stub.tasks) == 1
 
         login_response = client.post(
@@ -80,8 +81,39 @@ def test_auth_api_signup_login_and_duplicate_org(monkeypatch):
             },
         )
         assert login_response.status_code == 200
-        assert login_response.json()["token_type"] == "bearer"
-        assert login_response.json()["access_token"]
+        login = login_response.json()
+        assert login["token_type"] == "bearer"
+        assert login["access_token"]
+        assert login["refresh_token"]
+
+        refresh_response = client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": login["refresh_token"]},
+        )
+        assert refresh_response.status_code == 200
+        refreshed = refresh_response.json()
+        assert refreshed["access_token"]
+        assert refreshed["refresh_token"]
+        assert refreshed["refresh_token"] != login["refresh_token"]
+
+        reused_refresh_response = client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": login["refresh_token"]},
+        )
+        assert reused_refresh_response.status_code == 401
+
+        logout_response = client.post(
+            "/api/v1/auth/logout",
+            json={"refresh_token": refreshed["refresh_token"]},
+        )
+        assert logout_response.status_code == 200
+        assert logout_response.json() == {"status": "logged_out"}
+
+        logged_out_refresh_response = client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": refreshed["refresh_token"]},
+        )
+        assert logged_out_refresh_response.status_code == 401
 
         duplicate_response = client.post(
             "/api/v1/auth/signup",
