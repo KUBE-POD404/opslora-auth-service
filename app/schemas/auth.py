@@ -33,7 +33,32 @@ class CurrentUserResponse(BaseModel):
     user_id: int
     email: EmailStr
     org_id: int
+    organization_name: str
+    organization_slug: str
+    full_name: str | None = None
+    display_name: str | None = None
+    phone: str | None = None
+    timezone: str | None = None
+    language: str | None = None
+    email_workflow_summaries: bool = True
+    compact_tables: bool = True
+    roles: list[str] = Field(default_factory=list)
     permissions: list[str]
+
+
+class ProfileUpdate(BaseModel):
+    full_name: str | None = Field(default=None, max_length=150)
+    display_name: str | None = Field(default=None, max_length=100)
+    phone: str | None = Field(default=None, max_length=50)
+    timezone: str | None = Field(default=None, max_length=100)
+    language: str | None = Field(default=None, max_length=50)
+    email_workflow_summaries: bool | None = None
+    compact_tables: bool | None = None
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8)
 
 
 class RefreshTokenRequest(BaseModel):

@@ -89,6 +89,78 @@ def get_user_permissions(db, user_id, org_id):
     return [p[0] for p in permissions]
 
 
+def get_user_roles(db: Session, user_id: int, org_id: int) -> list[str]:
+    roles = (
+        db.query(Role.name)
+        .join(UserRole, UserRole.role_id == Role.id)
+        .join(OrganizationUser, OrganizationUser.id == UserRole.organization_user_id)
+        .filter(
+            OrganizationUser.user_id == user_id,
+            OrganizationUser.organization_id == org_id,
+        )
+        .all()
+    )
+    return [role[0] for role in roles]
+
+
+def get_current_profile(db: Session, user_id: int, org_id: int) -> dict:
+    user = db.query(User).filter(User.id == user_id).first()
+    organization = db.query(Organization).filter(Organization.id == org_id).first()
+
+    if not user or not organization:
+        raise UnauthorizedException("Invalid user context")
+
+    return {
+        "user_id": user.id,
+        "email": user.email,
+        "org_id": organization.id,
+        "organization_name": organization.name,
+        "organization_slug": organization.slug,
+        "full_name": user.full_name,
+        "display_name": user.display_name,
+        "phone": user.phone,
+        "timezone": user.timezone,
+        "language": user.language,
+        "email_workflow_summaries": user.email_workflow_summaries,
+        "compact_tables": user.compact_tables,
+        "roles": get_user_roles(db, user.id, organization.id),
+        "permissions": get_user_permissions(db, user.id, organization.id),
+    }
+
+
+def update_current_profile(db: Session, user_id: int, org_id: int, payload) -> dict:
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise UnauthorizedException("Invalid user context")
+
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(user, field, value)
+
+    db.commit()
+    db.refresh(user)
+    return get_current_profile(db, user.id, org_id)
+
+
+def change_password(
+    db: Session,
+    user_id: int,
+    current_password: str,
+    new_password: str,
+) -> dict:
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise UnauthorizedException("Invalid user context")
+
+    if not verify_password(current_password, user.password_hash):
+        raise UnauthorizedException("Current password is incorrect")
+
+    user.password_hash = hash_password(new_password)
+    db.commit()
+    return {"status": "password_changed"}
+
+
 # -------------------------
 # Signup
 # -------------------------
