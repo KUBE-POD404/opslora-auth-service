@@ -28,7 +28,7 @@ env:
   CHART_PATH: opslora-helm/apps/auth
   RELEASE_NAME: auth-service-azure-test
   NAMESPACE: opslora-app-ns
-  MIGRATE_JOB: auth-migrate
+  MIGRATE_JOB: auth-service-migrate
   AZURE_KEY_VAULT_ENABLED: "false"
 
 jobs:
