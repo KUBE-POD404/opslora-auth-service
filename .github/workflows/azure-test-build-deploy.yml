@@ -29,7 +29,7 @@ env:
   RELEASE_NAME: auth-service-azure-test
   NAMESPACE: opslora-app-ns
   MIGRATE_JOB: auth-service-migrate
-  AZURE_KEY_VAULT_ENABLED: "false"
+  AZURE_KEY_VAULT_ENABLED: "true"
 
 jobs:
   build-deploy:
