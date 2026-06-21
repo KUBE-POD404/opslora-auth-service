@@ -86,6 +86,7 @@ jobs:
       - unit-tests
       - migration-check
     if: ${{ needs.gate.outputs.should_build == 'true' && needs.unit-tests.result == 'success' && needs.migration-check.result == 'success' }}
+    # Reusable image build requires OIDC for Azure federated login.
     permissions:
       contents: read
       actions: read
