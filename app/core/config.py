@@ -78,7 +78,7 @@ class Settings:
     access_token_expire_minutes: int = _int("ACCESS_TOKEN_EXPIRE_MINUTES", 15)
     refresh_token_expire_days: int = _int("REFRESH_TOKEN_EXPIRE_DAYS", 30)
     storage_provider: str = _secret("STORAGE_PROVIDER", "local")
-    local_storage_root: str = _secret("LOCAL_STORAGE_ROOT", "/tmp/opslora-storage/auth-service")
+    local_storage_root: str = _secret("LOCAL_STORAGE_ROOT", "/var/lib/opslora/auth-service/storage")
     azure_storage_account_url: str = _secret("AZURE_STORAGE_ACCOUNT_URL", "")
     azure_storage_container: str = _secret("AZURE_STORAGE_CONTAINER", "org-assets")
 

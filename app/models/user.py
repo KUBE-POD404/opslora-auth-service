@@ -32,5 +32,5 @@ class User(Base):
 
     created_at = Column(
         DateTime(timezone=True),
-        default=datetime.now(utc_timezone.utc)
+        default=lambda: datetime.now(utc_timezone.utc)
     )
