@@ -35,7 +35,7 @@ def update_organization_settings(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[object, Depends(require_permission("organization.settings.update"))],
 ):
-    return update_settings(db, current_user.org_id, payload)
+    return update_settings(db, current_user.org_id, payload, current_user.user_id)
 
 
 @router.get("/feature-flags", response_model=list[FeatureFlagResponse])
