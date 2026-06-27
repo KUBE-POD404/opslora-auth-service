@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 
 from app.database import Base
 
@@ -38,6 +38,10 @@ class OrganizationSettings(Base):
     online_payments_enabled = Column(Boolean, nullable=False, default=False)
     multi_warehouse_enabled = Column(Boolean, nullable=False, default=False)
     advanced_reports_enabled = Column(Boolean, nullable=False, default=False)
+
+    lora_ai_enabled = Column(Boolean, nullable=False, default=False)
+    lora_ai_consent_at = Column(DateTime(timezone=True), nullable=True)
+    lora_ai_consent_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     __table_args__ = (
         UniqueConstraint("organization_id", name="uq_organization_settings_org"),

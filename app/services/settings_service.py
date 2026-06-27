@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from sqlalchemy.orm import Session
 
 from app.models.organization_settings import OrganizationFeatureFlag, OrganizationSettings
@@ -20,11 +22,22 @@ def get_or_create_settings(db: Session, organization_id: int) -> OrganizationSet
     return settings
 
 
-def update_settings(db: Session, organization_id: int, payload) -> OrganizationSettings:
+def update_settings(db: Session, organization_id: int, payload, actor_user_id: int | None = None) -> OrganizationSettings:
     settings = get_or_create_settings(db, organization_id)
+    previous_lora_enabled = bool(settings.lora_ai_enabled)
 
-    for key, value in payload.model_dump().items():
+    data = payload.model_dump()
+    next_lora_enabled = bool(data.get("lora_ai_enabled", False))
+
+    for key, value in data.items():
         setattr(settings, key, value)
+
+    if next_lora_enabled and not previous_lora_enabled:
+        settings.lora_ai_consent_at = datetime.now(timezone.utc)
+        settings.lora_ai_consent_by_user_id = actor_user_id
+    elif not next_lora_enabled:
+        settings.lora_ai_consent_at = None
+        settings.lora_ai_consent_by_user_id = None
 
     db.commit()
     db.refresh(settings)

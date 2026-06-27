@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
@@ -99,10 +101,13 @@ class OrganizationSettingsUpdate(BaseModel):
     online_payments_enabled: bool = False
     multi_warehouse_enabled: bool = False
     advanced_reports_enabled: bool = False
+    lora_ai_enabled: bool = False
 
 
 class OrganizationSettingsResponse(OrganizationSettingsUpdate):
     organization_id: int
+    lora_ai_consent_at: datetime | None = None
+    lora_ai_consent_by_user_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
